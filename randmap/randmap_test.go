@@ -219,3 +219,140 @@ func TestRange(t *testing.T) {
 		}
 	})
 }
+
+func TestWrapEmpty(t *testing.T) {
+	orig := map[string]int{}
+	m := Wrap(orig)
+	if m.Len() != 0 {
+		t.Errorf("expected len 0, got %d", m.Len())
+	}
+	_, ok := m.GetRandom()
+	if ok {
+		t.Error("expected no value from empty wrapped map")
+	}
+}
+
+func TestWrap(t *testing.T) {
+	orig := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+	m := Wrap(orig)
+
+	if m.Len() != 3 {
+		t.Errorf("expected len 3, got %d", m.Len())
+	}
+
+	val, ok := m.Get("a")
+	if !ok || val != 1 {
+		t.Errorf("expected 1 for 'a', got %v, %v", val, ok)
+	}
+	val, ok = m.Get("b")
+	if !ok || val != 2 {
+		t.Errorf("expected 2 for 'b', got %v, %v", val, ok)
+	}
+	val, ok = m.Get("c")
+	if !ok || val != 3 {
+		t.Errorf("expected 3 for 'c', got %v, %v", val, ok)
+	}
+
+	// Check internal consistency
+	if len(m.ik) != 3 || len(m.ki) != 3 {
+		t.Errorf("expected ik and ki len 3, got %d, %d", len(m.ik), len(m.ki))
+	}
+	seenKeys := make(map[string]bool)
+	for i := 0; i < 3; i++ {
+		key, ok := m.ik[i]
+		if !ok {
+			t.Errorf("missing ik[%d]", i)
+		}
+		seenKeys[key] = true
+		idx, ok := m.ki[key]
+		if !ok || idx != i {
+			t.Errorf("ki[%s] expected %d, got %d, %v", key, i, idx, ok)
+		}
+	}
+	if len(seenKeys) != 3 {
+		t.Errorf("expected 3 unique keys in ik, got %d", len(seenKeys))
+	}
+}
+
+func TestWrapGetRandom(t *testing.T) {
+	orig := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+	m := Wrap(orig)
+
+	// Call multiple times to check validity
+	seen := make(map[int]bool)
+	for i := 0; i < 100; i++ {
+		val, ok := m.GetRandom()
+		if !ok {
+			t.Error("expected value from non-empty map")
+		}
+		if val != 1 && val != 2 && val != 3 {
+			t.Errorf("unexpected value %d", val)
+		}
+		seen[val] = true
+	}
+	if len(seen) != 3 {
+		t.Errorf("expected to see all 3 values in 100 calls, saw %d", len(seen))
+	}
+}
+
+func TestWrapOperations(t *testing.T) {
+	orig := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+	m := Wrap(orig)
+
+	// Set new
+	m.Set("d", 4)
+	if m.Len() != 4 {
+		t.Errorf("expected len 4, got %d", m.Len())
+	}
+	val, ok := m.Get("d")
+	if !ok || val != 4 {
+		t.Errorf("expected 4 for 'd', got %v, %v", val, ok)
+	}
+
+	// Update existing
+	m.Set("a", 10)
+	if val, ok := m.Get("a"); !ok || val != 10 {
+		t.Errorf("expected 10 for 'a', got %v, %v", val, ok)
+	}
+	if m.Len() != 4 {
+		t.Errorf("expected len 4 after update, got %d", m.Len())
+	}
+
+	// Delete
+	m.Delete("b")
+	if m.Len() != 3 {
+		t.Errorf("expected len 3 after delete, got %d", m.Len())
+	}
+	_, ok = m.Get("b")
+	if ok {
+		t.Error("expected 'b' to be deleted")
+	}
+
+	// GetRandom after operations
+	seen := make(map[int]bool)
+	for i := 0; i < 100; i++ {
+		val, ok := m.GetRandom()
+		if !ok {
+			t.Error("expected value")
+		}
+		if val != 10 && val != 3 && val != 4 {
+			t.Errorf("unexpected value %d", val)
+		}
+		seen[val] = true
+	}
+	if len(seen) != 3 {
+		t.Errorf("expected to see 3 values, saw %d", len(seen))
+	}
+}

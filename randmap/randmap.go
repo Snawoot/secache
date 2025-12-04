@@ -24,6 +24,23 @@ func Make[K comparable, V any]() *RandMap[K, V] {
 	}
 }
 
+// Wrap indexes and wraps existing standard map into a *RandMap instance.
+// Original map should not be modified directly after that.
+func Wrap[K comparable, V any](m map[K]V) *RandMap[K, V] {
+	rm := &RandMap[K, V]{
+		kv: m,
+		ik: make(map[int]K),
+		ki: make(map[K]int),
+	}
+	i := 0
+	for k := range m {
+		rm.ik[i] = k
+		rm.ki[k] = i
+		i++
+	}
+	return rm
+}
+
 // Get retrieves key from map.
 func (m *RandMap[K, V]) Get(key K) (val V, ok bool) {
 	item, ok := m.kv[key]
@@ -79,13 +96,13 @@ func (m *RandMap[K, V]) Len() int {
 }
 
 // Range iterates over all map elements.
-// 
+//
 // Example:
 //
-//  m := Make()
-//  for k, v := range m.Range {
-//  	fmt.Println(k, v)
-//  }
+//	m := Make()
+//	for k, v := range m.Range {
+//		fmt.Println(k, v)
+//	}
 func (m *RandMap[K, V]) Range(f func(key K, value V) bool) {
 	for k, v := range m.kv {
 		if !f(k, v) {
