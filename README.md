@@ -1,2 +1,3 @@
-# recache
-Randomized Expiration Cache
+# secache
+
+Sampling Eviction Cache
