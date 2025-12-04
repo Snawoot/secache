@@ -174,3 +174,48 @@ func TestInternalConsistency(t *testing.T) {
 		}
 	}
 }
+
+func TestRange(t *testing.T) {
+	m := Make[string, int]()
+	m.Set("a", 1)
+	m.Set("b", 2)
+	m.Set("c", 3)
+
+	t.Run("IterateAll", func(t *testing.T) {
+		seen := make(map[string]int)
+		for k, v := range m.Range {
+			seen[k] = v
+		}
+		if len(seen) != 3 {
+			t.Errorf("expected to see 3 items, saw %d", len(seen))
+		}
+		for k, v := range m.kv {
+			if seenV, ok := seen[k]; !ok || seenV != v {
+				t.Errorf("mismatch for %s: expected %d, got %d", k, v, seenV)
+			}
+		}
+	})
+
+	t.Run("EarlyStop", func(t *testing.T) {
+		count := 0
+		for _, _ = range m.Range {
+			count++
+			break
+		}
+		if count != 1 {
+			t.Errorf("expected to iterate 1 time, got %d", count)
+		}
+	})
+
+	t.Run("EmptyMap", func(t *testing.T) {
+		empty := Make[string, int]()
+		called := false
+		for _, _ = range empty.Range {
+			called = true
+			break
+		}
+		if called {
+			t.Error("expected no calls on empty map")
+		}
+	})
+}
