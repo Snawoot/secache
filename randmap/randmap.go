@@ -3,6 +3,7 @@
 package randmap
 
 import (
+	"fmt"
 	"math/rand/v2"
 )
 
@@ -80,14 +81,23 @@ func (m *RandMap[K, V]) Delete(key K) {
 
 // GetRandom retrieves uniformly-distributed random key-value pair from map,
 // if it's not empty.
-func (m *RandMap[K, V]) GetRandom() (val V, ok bool) {
+func (m *RandMap[K, V]) GetRandom() (K, V, bool) {
+	var emptyK K
 	var emptyV V
 	l := m.Len()
 	if l == 0 {
-		return emptyV, false
+		return emptyK, emptyV, false
 	}
-	item, ok := m.kv[m.ik[rand.IntN(l)]]
-	return item, ok
+	i := rand.IntN(l)
+	key, ok := m.ik[i]
+	if !ok {
+		panic(fmt.Errorf("key with index %d was not found!", i))
+	}
+	item, ok := m.kv[key]
+	if !ok {
+		panic(fmt.Errorf("value for key %#v was not found!", key))
+	}
+	return key, item, true
 }
 
 // Len returns number of key-value pairs in map.

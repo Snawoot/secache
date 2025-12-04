@@ -9,7 +9,7 @@ func TestMake(t *testing.T) {
 	if m.Len() != 0 {
 		t.Errorf("expected len 0, got %d", m.Len())
 	}
-	_, ok := m.GetRandom()
+	_, _, ok := m.GetRandom()
 	if ok {
 		t.Error("expected no value from empty map")
 	}
@@ -98,28 +98,37 @@ func TestDeleteLast(t *testing.T) {
 	}
 }
 
-func TestGetRandom(t *testing.T) {
+func TestGetRandomFromEmpty(t *testing.T) {
 	m := Make[string, int]()
-	_, ok := m.GetRandom()
+	_, _, ok := m.GetRandom()
 	if ok {
 		t.Error("expected no value from empty map")
 	}
+}
 
-	m.Set("a", 1)
-	m.Set("b", 2)
-	m.Set("c", 3)
+func TestGetRandom(t *testing.T) {
+	om := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+	m := Wrap(om)
 
 	// Call multiple times to check validity
-	seen := make(map[int]struct{})
+	seen := make(map[string]struct{})
 	for i := 0; i < 100; i++ {
-		val, ok := m.GetRandom()
+		key, val, ok := m.GetRandom()
 		if !ok {
 			t.Error("expected value from non-empty map")
 		}
-		if val != 1 && val != 2 && val != 3 {
-			t.Errorf("unexpected value %d", val)
+		if _, ok := om[key]; !ok {
+			t.Errorf("key %q doesn't belong original map", key)
+		} else {
+			if oval := om[key]; oval != val {
+				t.Errorf("unexpected value %d, expected %d", val, oval)
+			}
 		}
-		seen[val] = struct{}{}
+		seen[key] = struct{}{}
 	}
 	if len(seen) != 3 {
 		t.Errorf("expected to see all 3 values in 100 calls, saw %d", len(seen))
@@ -136,12 +145,15 @@ func TestGetRandomAfterDelete(t *testing.T) {
 	// Call multiple times
 	seen := make(map[int]struct{})
 	for i := 0; i < 100; i++ {
-		val, ok := m.GetRandom()
+		key, val, ok := m.GetRandom()
 		if !ok {
 			t.Error("expected value")
 		}
 		if val != 1 && val != 3 {
 			t.Errorf("unexpected value %d", val)
+		}
+		if key != "a" && key != "c" {
+			t.Errorf("unexpected key %q", key)
 		}
 		seen[val] = struct{}{}
 	}
@@ -226,7 +238,7 @@ func TestWrapEmpty(t *testing.T) {
 	if m.Len() != 0 {
 		t.Errorf("expected len 0, got %d", m.Len())
 	}
-	_, ok := m.GetRandom()
+	_, _, ok := m.GetRandom()
 	if ok {
 		t.Error("expected no value from empty wrapped map")
 	}
@@ -278,31 +290,6 @@ func TestWrap(t *testing.T) {
 	}
 }
 
-func TestWrapGetRandom(t *testing.T) {
-	orig := map[string]int{
-		"a": 1,
-		"b": 2,
-		"c": 3,
-	}
-	m := Wrap(orig)
-
-	// Call multiple times to check validity
-	seen := make(map[int]bool)
-	for i := 0; i < 100; i++ {
-		val, ok := m.GetRandom()
-		if !ok {
-			t.Error("expected value from non-empty map")
-		}
-		if val != 1 && val != 2 && val != 3 {
-			t.Errorf("unexpected value %d", val)
-		}
-		seen[val] = true
-	}
-	if len(seen) != 3 {
-		t.Errorf("expected to see all 3 values in 100 calls, saw %d", len(seen))
-	}
-}
-
 func TestWrapOperations(t *testing.T) {
 	orig := map[string]int{
 		"a": 1,
@@ -343,7 +330,7 @@ func TestWrapOperations(t *testing.T) {
 	// GetRandom after operations
 	seen := make(map[int]bool)
 	for i := 0; i < 100; i++ {
-		val, ok := m.GetRandom()
+		_, val, ok := m.GetRandom()
 		if !ok {
 			t.Error("expected value")
 		}
