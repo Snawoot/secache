@@ -1,1 +1,63 @@
+// Package secache implements generic cache with arbitrary expiration criteria
+// defined by arbitrary validity function.
 package secache
+
+import (
+	"sync"
+
+	"github.com/Snawoot/secache/randmap"
+)
+
+// ValidityFunc is a function which used to check if element should stay in cache.
+type ValidityFunc[K comparable, V any] = func(K, V) bool
+
+type Cache[K comparable, V any] struct {
+	mux sync.Mutex
+	m   *randmap.RandMap
+	f   ValidityFunc
+	n   int
+}
+
+const MinN = 2
+
+func New[K comparable, V any](n int, f ValitidyFunc[K, V]) *Cache[K, V] {
+	return &Cache[K, V]{
+		m: randmap.Make(),
+		n: max(n, MinN),
+		f: f,
+	}
+}
+
+// Flush empties cache.
+func (c *Cache[K, V]) Flush() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.m = randmap.Make()
+}
+
+// Do acquires lock and exposes storage to a provided function f.
+func (c *Cache[K, V]) Do(f func(*randmap.RandMap)) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	f(c.m)
+}
+
+// Len returns number of items in cache.
+func (c *Cache[K, V]) Len() (l int) {
+	c.Do(func(m *randmap.RandMap) {
+		l = m.Len()
+	})
+	return
+}
+
+func (c *Cache[K, V]) Get(key K) (value V, ok bool) {
+	c.Do(func(m *randmap.RandMap) {
+		value, ok := m.Get(key)
+	})
+	return
+}
+
+func (c *Cache[K, V]) Set(key K, value V) (updated bool) {
+	// TODO: everything
+	return false
+}
