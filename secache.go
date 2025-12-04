@@ -14,15 +14,15 @@ type ValidityFunc[K comparable, V any] = func(K, V) bool
 type Cache[K comparable, V any] struct {
 	mux sync.Mutex
 	m   *randmap.RandMap[K, V]
-	f   ValidityFunc
+	f   ValidityFunc[K, V]
 	n   int
 }
 
 const MinN = 2
 
-func New[K comparable, V any](n int, f ValitidyFunc[K, V]) *Cache[K, V] {
+func New[K comparable, V any](n int, f ValidityFunc[K, V]) *Cache[K, V] {
 	return &Cache[K, V]{
-		m: randmap.Make(),
+		m: randmap.Make[K, V](),
 		n: max(n, MinN),
 		f: f,
 	}
@@ -32,13 +32,13 @@ func New[K comparable, V any](n int, f ValitidyFunc[K, V]) *Cache[K, V] {
 func (c *Cache[K, V]) Flush() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.m = randmap.Make()
+	c.m = randmap.Make[K, V]()
 }
 
 // Do acquires lock and exposes storage to a provided function f.
 // f should not operate on cache object, but only on exposed storage.
 // Provided storage reference is valid only within f.
-func (c *Cache[K, V]) Do(f func(*randmap.RandMap)) {
+func (c *Cache[K, V]) Do(f func(*randmap.RandMap[K, V])) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	f(c.m)
@@ -46,7 +46,7 @@ func (c *Cache[K, V]) Do(f func(*randmap.RandMap)) {
 
 // Len returns number of items in cache.
 func (c *Cache[K, V]) Len() (l int) {
-	c.Do(func(m *randmap.RandMap) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
 		l = m.Len()
 	})
 	return
@@ -54,14 +54,14 @@ func (c *Cache[K, V]) Len() (l int) {
 
 // Get fetches key from cache.
 func (c *Cache[K, V]) Get(key K) (value V, ok bool) {
-	c.Do(func(m *randmap.RandMap) {
-		value, ok := m.Get(key)
+	c.Do(func(m *randmap.RandMap[K, V]) {
+		value, ok = m.Get(key)
 	})
 	return
 }
 
 func (c *Cache[K, V]) Set(key K, value V) {
-	c.Do(func(m *randmap.RandMap) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
 		oldLen := m.Len()
 		m.Set(key, value)
 		if newLen := m.Len(); newLen > oldLen {
@@ -72,7 +72,7 @@ func (c *Cache[K, V]) Set(key K, value V) {
 					// cache is empty
 					break
 				}
-				if c.f(ck, cv) {
+				if !c.f(ck, cv) {
 					m.Delete(ck)
 				}
 			}
