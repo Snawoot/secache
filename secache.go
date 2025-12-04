@@ -13,7 +13,7 @@ type ValidityFunc[K comparable, V any] = func(K, V) bool
 
 type Cache[K comparable, V any] struct {
 	mux sync.Mutex
-	m   *randmap.RandMap
+	m   *randmap.RandMap[K, V]
 	f   ValidityFunc
 	n   int
 }
@@ -36,6 +36,8 @@ func (c *Cache[K, V]) Flush() {
 }
 
 // Do acquires lock and exposes storage to a provided function f.
+// f should not operate on cache object, but only on exposed storage.
+// Provided storage reference is valid only within f.
 func (c *Cache[K, V]) Do(f func(*randmap.RandMap)) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -50,6 +52,7 @@ func (c *Cache[K, V]) Len() (l int) {
 	return
 }
 
+// Get fetches key from cache.
 func (c *Cache[K, V]) Get(key K) (value V, ok bool) {
 	c.Do(func(m *randmap.RandMap) {
 		value, ok := m.Get(key)
@@ -57,7 +60,22 @@ func (c *Cache[K, V]) Get(key K) (value V, ok bool) {
 	return
 }
 
-func (c *Cache[K, V]) Set(key K, value V) (updated bool) {
-	// TODO: everything
-	return false
+func (c *Cache[K, V]) Set(key K, value V) {
+	c.Do(func(m *randmap.RandMap) {
+		oldLen := m.Len()
+		m.Set(key, value)
+		if newLen := m.Len(); newLen > oldLen {
+			// new element was added, run eviction attempts
+			for i := 0; i < c.n; i++ {
+				ck, cv, ok := m.GetRandom()
+				if !ok {
+					// cache is empty
+					break
+				}
+				if c.f(ck, cv) {
+					m.Delete(ck)
+				}
+			}
+		}
+	})
 }
