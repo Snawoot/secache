@@ -96,13 +96,6 @@ func (m *RandMap[K, V]) Len() int {
 }
 
 // Range iterates over all map elements.
-//
-// Example:
-//
-//	m := Make()
-//	for k, v := range m.Range {
-//		fmt.Println(k, v)
-//	}
 func (m *RandMap[K, V]) Range(f func(key K, value V) bool) {
 	for k, v := range m.kv {
 		if !f(k, v) {
