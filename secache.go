@@ -83,28 +83,34 @@ func (c *Cache[K, V]) GetOrCreate(key K, newValFunc func() V) (value V) {
 		value, ok = m.Get(key)
 		if !ok || !c.f(key, value) {
 			value = newValFunc()
-			m.Set(key, value)
+			c.SetLocked(m, key, value)
 		}
 	})
 	return
 }
 
-func (c *Cache[K, V]) Set(key K, value V) {
-	c.Do(func(m *randmap.RandMap[K, V]) {
-		oldLen := m.Len()
-		m.Set(key, value)
-		if newLen := m.Len(); newLen > oldLen {
-			// new element was added, run eviction attempts
-			for i := 0; i < c.n; i++ {
-				ck, cv, ok := m.GetRandom()
-				if !ok {
-					// cache is empty
-					break
-				}
-				if !c.f(ck, cv) {
-					m.Delete(ck)
-				}
+// SetLocked is a utility function which adds or updates key with proper expiration logic.
+// It is intended to be used inside Do(f) transaction.
+func (c *Cache[K, V]) SetLocked(m *randmap.RandMap[K, V], key K, value V) {
+	oldLen := m.Len()
+	m.Set(key, value)
+	if newLen := m.Len(); newLen > oldLen {
+		// new element was added, run eviction attempts
+		for i := 0; i < c.n; i++ {
+			ck, cv, ok := m.GetRandom()
+			if !ok {
+				// cache is empty
+				break
+			}
+			if !c.f(ck, cv) {
+				m.Delete(ck)
 			}
 		}
+	}
+}
+
+func (c *Cache[K, V]) Set(key K, value V) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
+		c.SetLocked(m, key, value)
 	})
 }
