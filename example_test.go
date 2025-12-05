@@ -21,4 +21,6 @@ func ExampleCache_Do() {
 	})
 	val, _ := c.Get(incrKey)
 	fmt.Printf("c[%q] = %d\n", incrKey, val)
+	// Output:
+	// c["c"] = 1
 }

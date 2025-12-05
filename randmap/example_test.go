@@ -15,4 +15,8 @@ func ExampleRandMap_Range() {
 	for k, v := range m.Range {
 		fmt.Println(k, v)
 	}
+	// Output:
+	// a 1
+	// b 2
+	// c 3
 }
