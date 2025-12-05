@@ -178,3 +178,31 @@ func TestEviction(t *testing.T) {
 		}
 	}
 }
+
+func TestDelete(t *testing.T) {
+	f := func(k int, v int) bool { return true }
+	c := New(2, f)
+	c.Set(1, 10)
+	if c.Len() != 1 {
+		t.Error("expected len=1")
+	}
+	v, ok := c.Get(1)
+	if !ok || v != 10 {
+		t.Error("expected to get value")
+	}
+
+	c.Delete(1)
+	if c.Len() != 0 {
+		t.Error("expected len=0 after delete")
+	}
+	_, ok = c.Get(1)
+	if ok {
+		t.Error("expected not found after delete")
+	}
+
+	// Delete non-existing key
+	c.Delete(2)
+	if c.Len() != 0 {
+		t.Error("expected len still 0")
+	}
+}

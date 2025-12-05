@@ -126,6 +126,13 @@ func (c *Cache[K, V]) GetOrCreate(key K, newValFunc func() V) (value V) {
 	return
 }
 
+// Delete removes key from cache.
+func (c *Cache[K, V]) Delete(key K) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
+		m.Delete(key)
+	})
+}
+
 // SetLocked is an utility function which adds or updates key with proper
 // expiration logic. It is intended to be used within Do(f) transaction.
 func (c *Cache[K, V]) SetLocked(m *randmap.RandMap[K, V], key K, value V) {
