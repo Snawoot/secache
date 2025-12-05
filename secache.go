@@ -1,8 +1,8 @@
 // Package secache implements sampling eviction cache, a generic cache with
 // arbitrary expiration criteria defined by validity function provided by user.
-// It offers O(1) time complexity for all operations and very flexible notion
-// of element validity, which is useful when usual approaches based on item age
-// do not provide reasonable approximation or fit at all.
+// It offers O(1) am. time complexity for all operations and very flexible
+// notion of element validity, which is useful when usual approaches based on
+// item age do not provide reasonable approximation or fit at all.
 package secache
 
 import (
