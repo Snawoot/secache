@@ -1,7 +1,7 @@
 package secache
 
 import (
-	"math"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -140,37 +140,41 @@ func TestConcurrent(t *testing.T) {
 func TestEviction(t *testing.T) {
 	type K = int
 	type V = int // generation number
-	currentGen := 0
-	ttl := 60
-	f := func(k K, elemGen V) bool {
-		return currentGen-elemGen < ttl
-	}
-	const n = 10
-	const genItems = 1000
-	const generations = 1000
-	c := New[K, V](n, f)
+	for _, ttl := range []int{5, 10, 60, 100, 300} {
+		for _, n := range []int{2, 3, 4, 5, 10} {
+			t.Run(fmt.Sprintf("n=%d, ttl=%d", n, ttl), func(t *testing.T) {
+				currentGen := 0
+				f := func(k K, elemGen V) bool {
+					return currentGen-elemGen < ttl
+				}
+				const genItems = 1000
+				const generations = 1000
+				c := New[K, V](n, f)
 
-	for currentGen = range generations {
-		for i := range genItems {
-			c.Set(currentGen*genItems+i, currentGen)
+				for currentGen = range generations {
+					for i := range genItems {
+						c.Set(currentGen*genItems+i, currentGen)
+					}
+				}
+
+				var total int
+				var invalid int
+				c.Do(func(m *randmap.RandMap[K, V]) {
+					for k, v := range m.Range {
+						total++
+						if !f(k, v) {
+							invalid++
+						}
+					}
+				})
+				fractionInv := float64(invalid) / float64(total)
+				expected := 1.0 / float64(n)
+				if fractionInv-expected > 0.05 {
+					t.Errorf("invalid fraction %f not close to expected %f", fractionInv, expected)
+				}
+				t.Logf("tested Cache(%d, |ttl = %d|) with %d generations, %d elements in each generation: len = %d, %.2f%% expired",
+					n, ttl, generations, genItems, c.Len(), fractionInv*100)
+			})
 		}
 	}
-
-	var total int
-	var invalid int
-	c.Do(func(m *randmap.RandMap[K, V]) {
-		for k, v := range m.Range {
-			total++
-			if !f(k, v) {
-				invalid++
-			}
-		}
-	})
-	fractionInv := float64(invalid) / float64(total)
-	expected := 1.0 / float64(n)
-	if math.Abs(fractionInv-expected) > 0.1 {
-		t.Errorf("invalid fraction %f not close to expected %f", fractionInv, expected)
-	}
-	t.Logf("tested Cache(%d, |ttl = %d|) with %d generations, %d elements in each generation: len = %d, %.2f%% expired",
-		n, ttl, generations, genItems, c.Len(), fractionInv*100)
 }
