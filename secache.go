@@ -52,10 +52,39 @@ func (c *Cache[K, V]) Len() (l int) {
 	return
 }
 
-// Get fetches key from cache.
+// Get lookups key in cache, valid or not.
 func (c *Cache[K, V]) Get(key K) (value V, ok bool) {
 	c.Do(func(m *randmap.RandMap[K, V]) {
 		value, ok = m.Get(key)
+	})
+	return
+}
+
+// GetValidOrDelete fetches valid key from cache or deletes it if it was
+// found, but not valid.
+func (c *Cache[K, V]) GetValidOrDelete(key K) (value V, ok bool) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
+		value, ok = m.Get(key)
+		if !ok {
+			return
+		}
+		if !c.f(key, value) {
+			ok = false
+			m.Delete(key)
+		}
+	})
+	return
+}
+
+// GetOrCreate fetches valid key from cache or creates new one with provided function
+func (c *Cache[K, V]) GetOrCreate(key K, newValFunc func() V) (value V) {
+	c.Do(func(m *randmap.RandMap[K, V]) {
+		var ok bool
+		value, ok = m.Get(key)
+		if !ok || !c.f(key, value) {
+			value = newValFunc()
+			m.Set(key, value)
+		}
 	})
 	return
 }
