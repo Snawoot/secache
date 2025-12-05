@@ -152,7 +152,7 @@ func TestEviction(t *testing.T) {
 
 	for currentGen = range generations {
 		for i := range genItems {
-			c.Set(currentGen * genItems + i, currentGen)
+			c.Set(currentGen*genItems+i, currentGen)
 		}
 	}
 
@@ -172,5 +172,5 @@ func TestEviction(t *testing.T) {
 		t.Errorf("invalid fraction %f not close to expected %f", fractionInv, expected)
 	}
 	t.Logf("tested Cache(%d, |ttl = %d|) with %d generations, %d elements in each generation: len = %d, %.2f%% expired",
-		n, ttl, generations, genItems, c.Len(), fractionInv * 100)
+		n, ttl, generations, genItems, c.Len(), fractionInv*100)
 }
