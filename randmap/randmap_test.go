@@ -162,31 +162,6 @@ func TestGetRandomAfterDelete(t *testing.T) {
 	}
 }
 
-func TestInternalConsistency(t *testing.T) {
-	m := Make[int, string]()
-	for i := 1; i <= 10; i++ {
-		m.Set(i, "val")
-	}
-	for i := 5; i <= 8; i++ {
-		m.Delete(i)
-	}
-	if m.Len() != 6 {
-		t.Errorf("expected len 6, got %d", m.Len())
-	}
-
-	// Check ik and ki consistency
-	for idx, key := range m.ik {
-		if gotIdx, ok := m.ki[key]; !ok || gotIdx != idx {
-			t.Errorf("inconsistency for key %d: expected idx %d, got %d, %v", key, idx, gotIdx, ok)
-		}
-	}
-	for key, idx := range m.ki {
-		if gotKey, ok := m.ik[idx]; !ok || gotKey != key {
-			t.Errorf("inconsistency for idx %d: expected key %d, got %d, %v", idx, key, gotKey, ok)
-		}
-	}
-}
-
 func TestRange(t *testing.T) {
 	m := Make[string, int]()
 	m.Set("a", 1)
@@ -267,26 +242,6 @@ func TestWrap(t *testing.T) {
 	val, ok = m.Get("c")
 	if !ok || val != 3 {
 		t.Errorf("expected 3 for 'c', got %v, %v", val, ok)
-	}
-
-	// Check internal consistency
-	if len(m.ik) != 3 || len(m.ki) != 3 {
-		t.Errorf("expected ik and ki len 3, got %d, %d", len(m.ik), len(m.ki))
-	}
-	seenKeys := make(map[string]bool)
-	for i := 0; i < 3; i++ {
-		key, ok := m.ik[i]
-		if !ok {
-			t.Errorf("missing ik[%d]", i)
-		}
-		seenKeys[key] = true
-		idx, ok := m.ki[key]
-		if !ok || idx != i {
-			t.Errorf("ki[%s] expected %d, got %d, %v", key, i, idx, ok)
-		}
-	}
-	if len(seenKeys) != 3 {
-		t.Errorf("expected 3 unique keys in ik, got %d", len(seenKeys))
 	}
 }
 

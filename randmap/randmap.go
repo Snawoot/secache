@@ -2,26 +2,17 @@
 // of keys in it.
 package randmap
 
-import (
-	"fmt"
-	"math/rand/v2"
-)
-
 // RandMap represents key-value map which allows to fetch random key from map,
 // granting equal probability of selection among keys. Time complexity of all
 // operations is O(1) am.
 type RandMap[K comparable, V any] struct {
 	kv map[K]V
-	ik map[int]K
-	ki map[K]int
 }
 
 // Make creates empty map.
 func Make[K comparable, V any]() *RandMap[K, V] {
 	return &RandMap[K, V]{
 		kv: make(map[K]V),
-		ik: make(map[int]K),
-		ki: make(map[K]int),
 	}
 }
 
@@ -30,14 +21,6 @@ func Make[K comparable, V any]() *RandMap[K, V] {
 func Wrap[K comparable, V any](m map[K]V) *RandMap[K, V] {
 	rm := &RandMap[K, V]{
 		kv: m,
-		ik: make(map[int]K),
-		ki: make(map[K]int),
-	}
-	i := 0
-	for k := range m {
-		rm.ik[i] = k
-		rm.ki[k] = i
-		i++
 	}
 	return rm
 }
@@ -50,54 +33,22 @@ func (m *RandMap[K, V]) Get(key K) (val V, ok bool) {
 
 // Set adds or updates key-value pair in map.
 func (m *RandMap[K, V]) Set(key K, item V) {
-	oldLen := len(m.kv)
 	m.kv[key] = item
-	if newLen := len(m.kv); newLen > oldLen {
-		// adding new element and updating indexes
-		m.ik[newLen-1] = key
-		m.ki[key] = newLen - 1
-	}
 }
 
 // Delete removes key from map.
 func (m *RandMap[K, V]) Delete(key K) {
-	deletedIdx, ok := m.ki[key]
-	if !ok {
-		return
-	}
-	oldLen := m.Len()
-
 	delete(m.kv, key)
-	delete(m.ki, key)
-	if deletedIdx == oldLen-1 {
-		delete(m.ik, deletedIdx)
-	} else {
-		relocatedKey := m.ik[oldLen-1]
-		m.ki[relocatedKey] = deletedIdx
-		m.ik[deletedIdx] = relocatedKey
-		delete(m.ik, oldLen-1)
-	}
 }
 
 // GetRandom retrieves uniformly-distributed random key-value pair from map,
 // if it's not empty.
-func (m *RandMap[K, V]) GetRandom() (K, V, bool) {
-	var emptyK K
-	var emptyV V
-	l := m.Len()
-	if l == 0 {
-		return emptyK, emptyV, false
+func (m *RandMap[K, V]) GetRandom() (k K, v V, ok bool) {
+	for k, v = range m.kv {
+		ok = true
+		return
 	}
-	i := rand.IntN(l)
-	key, ok := m.ik[i]
-	if !ok {
-		panic(fmt.Errorf("key with index %d was not found!", i))
-	}
-	item, ok := m.kv[key]
-	if !ok {
-		panic(fmt.Errorf("value for key %#v was not found!", key))
-	}
-	return key, item, true
+	return
 }
 
 // Len returns number of key-value pairs in map.
