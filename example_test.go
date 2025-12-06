@@ -2,10 +2,40 @@ package secache_test
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/Snawoot/secache"
 	"github.com/Snawoot/secache/randmap"
 )
+
+func Example() {
+	// demonstrates use of cache as a usual TTL cache
+	const TTL = 1 * time.Minute
+	type CacheItem struct {
+		expires time.Time
+		value   string
+	}
+	c := secache.New[string, *CacheItem](3, func(key string, item *CacheItem) bool {
+		return time.Now().Before(item.expires)
+	})
+
+	key := "some key"
+	item, ok := c.GetValidOrDelete(key)
+	fmt.Println(item)
+	if !ok {
+		c.Set(key, &CacheItem{
+			expires: time.Now().Add(TTL),
+			value:   strings.ToTitle(key),
+		})
+	}
+
+	item, ok = c.GetValidOrDelete(key)
+	fmt.Printf("%q %t", item.value, ok)
+	// Output:
+	// <nil>
+	// "SOME KEY" true
+}
 
 func ExampleCache_Do() {
 	// demonstrates cache item increment

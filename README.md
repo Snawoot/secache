@@ -14,3 +14,42 @@ Sampling Eviction Cache
 * Adjustable space overhead for tradeoff between time and space.
 * Simple and clear implementation well within 200 LOC.
 * Support for complex operations within single critical section.
+
+## Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/Snawoot/secache"
+)
+
+func main() {
+	// demonstrates use of cache as a usual TTL cache
+	const TTL = 1 * time.Minute
+	type CacheItem struct {
+		expires time.Time
+		value   string
+	}
+	c := secache.New[string, *CacheItem](3, func(key string, item *CacheItem) bool {
+		return time.Now().Before(item.expires)
+	})
+
+	key := "some key"
+	item, ok := c.GetValidOrDelete(key)
+	fmt.Println(item)
+	if !ok {
+		c.Set(key, &CacheItem{
+			expires: time.Now().Add(TTL),
+			value:   strings.ToTitle(key),
+		})
+	}
+
+	item, ok = c.GetValidOrDelete(key)
+	fmt.Printf("%q %t", item.value, ok)
+}
+```
